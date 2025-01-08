@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { User, ChevronDown } from 'lucide-react'
 import { supabase, updateUserStatus } from '../lib/supabase'
 
-type Status = 'available' | 'focused' | 'away'
+type Status = 'online' | 'offline' | 'away'
 
 interface UserStatusProps {
   currentUser: {
@@ -13,7 +13,7 @@ interface UserStatusProps {
 }
 
 const UserStatus: React.FC<UserStatusProps> = ({ currentUser }) => {
-  const [status, setStatus] = useState<Status>('available')
+  const [status, setStatus] = useState<Status>('online')
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const lastActivityRef = useRef(Date.now())
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -23,16 +23,16 @@ const UserStatus: React.FC<UserStatusProps> = ({ currentUser }) => {
   useEffect(() => {
     const handleActivity = () => {
       lastActivityRef.current = Date.now()
-      if (status === 'focused') {
-        setStatus('available')
-        updateStatus('available')
+      if (status === 'offline') {
+        setStatus('online')
+        updateStatus('online')
       }
     }
 
     const checkInactivity = setInterval(() => {
-      if (Date.now() - lastActivityRef.current > 10000 && status === 'available') {
-        setStatus('focused')
-        updateStatus('focused')
+      if (Date.now() - lastActivityRef.current > 10000 && status === 'online') {
+        setStatus('away')
+        updateStatus('away')
       }
     }, 1000)
 
@@ -89,9 +89,9 @@ const UserStatus: React.FC<UserStatusProps> = ({ currentUser }) => {
         className="flex items-center space-x-2 focus:outline-none"
       >
         <div className={`w-3 h-3 rounded-full ${
-          status === 'available' ? 'bg-green-500' :
-          status === 'focused' ? 'bg-yellow-500' :
-          'bg-red-500'
+          status === 'online' ? 'bg-green-500' :
+          status === 'offline' ? 'bg-red-500' :
+          'bg-yellow-500'
         }`} />
         <span className="font-medium text-white">{displayName}</span>
         <ChevronDown size={16} className="text-white" />
@@ -100,18 +100,18 @@ const UserStatus: React.FC<UserStatusProps> = ({ currentUser }) => {
         <div className="absolute top-full left-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
           <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
             <button
-              onClick={() => handleStatusChange('available')}
+              onClick={() => handleStatusChange('online')}
               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
               role="menuitem"
             >
-              Available
+              Online
             </button>
             <button
-              onClick={() => handleStatusChange('focused')}
+              onClick={() => handleStatusChange('offline')}
               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
               role="menuitem"
             >
-              Focused
+              Offline
             </button>
             <button
               onClick={() => handleStatusChange('away')}
