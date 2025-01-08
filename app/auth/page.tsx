@@ -8,8 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Lock, Mail, X } from "lucide-react"
-import Lottie from 'react-lottie-player'
-import loadingAnimation from '@/public/lottie-animation.json'
 
 export default function Auth() {
   const [email, setEmail] = useState('')
@@ -19,10 +17,12 @@ export default function Auth() {
   const [message, setMessage] = useState<string | null>(null)
   const [joiningWorkspaceName, setJoiningWorkspaceName] = useState<string | null>(null)
   const [isAuthenticating, setIsAuthenticating] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
   const supabase = createClientComponentClient()
 
   useEffect(() => {
+    setMounted(true)
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       const workspaceId = params.get('workspaceId')
@@ -35,6 +35,10 @@ export default function Auth() {
       }
     }
   }, [])
+
+  if (!mounted) {
+    return null
+  }
 
   const fetchWorkspaceName = async (workspaceId: string): Promise<string | null> => {
     try {
@@ -238,12 +242,9 @@ export default function Auth() {
       <div className="min-h-screen grid place-items-center bg-gradient-to-b from-violet-100 to-violet-50 dark:from-gray-900 dark:to-gray-800">
         <Card className="w-full max-w-md mx-4">
           <CardContent className="flex flex-col items-center py-8">
-            <Lottie
-              loop
-              animationData={loadingAnimation}
-              play
-              style={{ width: 200, height: 200 }}
-            />
+            <div className="w-16 h-16 mb-4">
+              <Loader2 className="w-full h-full animate-spin text-violet-600" />
+            </div>
             <div className="space-y-2 text-center">
               <h2 className="text-xl font-semibold">Welcome aboard! 🚀</h2>
               <p className="text-gray-600 dark:text-gray-300">
