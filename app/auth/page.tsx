@@ -23,14 +23,16 @@ export default function Auth() {
   const supabase = createClientComponentClient()
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const workspaceId = params.get('workspaceId')
-    console.log('Detected workspaceId:', workspaceId)
-    if (workspaceId) {
-      fetchWorkspaceName(workspaceId).then(name => {
-        console.log('Fetched workspace name:', name)
-        if (name) setJoiningWorkspaceName(name)
-      })
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const workspaceId = params.get('workspaceId')
+      console.log('Detected workspaceId:', workspaceId)
+      if (workspaceId) {
+        fetchWorkspaceName(workspaceId).then(name => {
+          console.log('Fetched workspace name:', name)
+          if (name) setJoiningWorkspaceName(name)
+        })
+      }
     }
   }, [])
 

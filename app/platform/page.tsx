@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { getWorkspaces, createWorkspace, joinWorkspace, getUserByEmail, createUserProfile, getChannels, supabase, getUserCount, testSupabaseConnection } from '../../lib/supabase'
 import Sidebar from '../../components/Sidebar'
 import ChatArea from '../../components/ChatArea'
@@ -32,7 +32,7 @@ interface UserStatus {
   last_seen: string;
 }
 
-export default function Platform() {
+function PlatformContent() {
   const [user, setUser] = useState<{ id: string; email: string; username?: string } | null>(null)
   const [activeWorkspace, setActiveWorkspace] = useState('')
   const [activeChannel, setActiveChannel] = useState('')
@@ -143,20 +143,23 @@ export default function Platform() {
   }
 
   useEffect(() => {
-    document.documentElement.classList.add('dark')
-    const workspaceId = searchParams.get('workspaceId')
-    if (workspaceId) {
-      fetchWorkspaceName(workspaceId).then(name => {
-        if (name) setJoiningWorkspaceName(name)
+    if (typeof window !== 'undefined') {
+      document.documentElement.classList.add('dark')
+      const params = new URLSearchParams(window.location.search)
+      const workspaceId = params.get('workspaceId')
+      if (workspaceId) {
+        fetchWorkspaceName(workspaceId).then(name => {
+          if (name) setJoiningWorkspaceName(name)
+        })
+      }
+      testSupabaseConnection().then(isConnected => {
+        if (isConnected) {
+          fetchUserCount()
+        } else {
+          setError('Failed to connect to the database. Please try again later.')
+        }
       })
     }
-    testSupabaseConnection().then(isConnected => {
-      if (isConnected) {
-        fetchUserCount()
-      } else {
-        setError('Failed to connect to the database. Please try again later.')
-      }
-    })
   }, [])
 
   useEffect(() => {
@@ -572,6 +575,14 @@ export default function Platform() {
         />
       )}
     </div>
+  )
+}
+
+export default function Platform() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PlatformContent />
+    </Suspense>
   )
 }
 
