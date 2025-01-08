@@ -7,20 +7,30 @@ interface ThreadViewProps {
   replies: MessageType[];
   currentUser: {
     id: string;
-    name: string;
-    status: 'online' | 'away' | 'offline';
+    email: string;
   };
-  onReply: (messageId: string, replyText: string) => void;
+  onReply: (messageId: string, replyText: string) => Promise<void>;
   onReaction: (messageId: string, emoji: string) => void;
   onClose: () => void;
 }
 
 interface MessageType {
   id: string;
-  text: string;
-  sender: string;
-  timestamp: number;
-  reactions: { [emoji: string]: string[] };
+  content: string;
+  created_at: string;
+  user_id: string;
+  reactions?: { [key: string]: string[] };
+  user?: {
+    username: string;
+    avatar_url: string;
+  };
+  replies?: MessageType[];
+  file_attachments?: {
+    id: string;
+    file_name: string;
+    file_type: string;
+    file_url: string;
+  }[];
 }
 
 const ThreadView: React.FC<ThreadViewProps> = ({
@@ -33,10 +43,10 @@ const ThreadView: React.FC<ThreadViewProps> = ({
 }) => {
   const [replyText, setReplyText] = useState('');
 
-  const handleSubmitReply = (e: React.FormEvent) => {
+  const handleSubmitReply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (replyText.trim()) {
-      onReply(parentMessage.id, replyText);
+      await onReply(parentMessage.id, replyText);
       setReplyText('');
     }
   };
@@ -57,7 +67,9 @@ const ThreadView: React.FC<ThreadViewProps> = ({
           message={parentMessage}
           currentUser={currentUser}
           onReaction={onReaction}
-          onReply={() => {}}
+          onReply={async (parentId: string, content: string) => {
+            await onReply(parentId, content);
+          }}
           isThreadView={true}
         />
         {replies && Array.isArray(replies) && replies.map((reply) => (
@@ -66,7 +78,9 @@ const ThreadView: React.FC<ThreadViewProps> = ({
             message={reply}
             currentUser={currentUser}
             onReaction={onReaction}
-            onReply={() => {}}
+            onReply={async (parentId: string, content: string) => {
+              await onReply(parentId, content);
+            }}
             isThreadView={true}
           />
         ))}

@@ -28,6 +28,8 @@ interface MessageProps {
     email: string;
   }
   onReply: (parentId: string, content: string) => Promise<void>;
+  onReaction?: (messageId: string, emoji: string) => void;
+  isThreadView?: boolean;
 }
 
 const Message: FC<MessageProps> = ({ message, currentUser, onReply }) => {
