@@ -1,12 +1,11 @@
 {
-  "version": 2,
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
+  "buildCommand": "next build",
+  "outputDirectory": ".next",
   "framework": "nextjs",
-  "builds": [
+  "rewrites": [
     {
-      "src": "package.json",
-      "use": "@vercel/next"
+      "source": "/(.*)",
+      "destination": "/$1"
     }
   ]
 } 
