@@ -7,6 +7,32 @@ export interface FileAttachment {
   file_url: string;    // URL to access the file
 }
 
+export interface SupabaseUser {
+  id: string;
+  username: string;
+  avatar_url: string;
+}
+
+export interface SupabaseResponse {
+  id: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  receiver_id: string;
+  sender: SupabaseUser[];
+  receiver: SupabaseUser[];
+}
+
+export interface DirectMessage {
+  id: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+  receiver_id: string;
+  sender: SupabaseUser;
+  receiver: SupabaseUser;
+}
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://rlaxacnkrfohotpyvnam.supabase.co"
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsYXhhY25rcmZvaG90cHl2bmFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYxOTk3NjcsImV4cCI6MjA1MTc3NTc2N30.djQ3ExBd5Y2wb2sUOZCs5g72U2EgdYte7NqFiLesE9Y"
 
@@ -256,98 +282,36 @@ export async function getUserByEmail(email: string) {
   return data
 }
 
-export async function getDirectMessages(userId: string, otherUserId: string) {
+export async function getDirectMessages(userId: string, receiverId: string): Promise<DirectMessage[]> {
   const { data, error } = await supabase
-    .from('messages')
+    .from('direct_messages')
     .select(`
       id,
       content,
       created_at,
       user_id,
       receiver_id,
-      sender:users!messages_user_id_fkey(id, username, avatar_url),
-      receiver:users!messages_receiver_id_fkey(id, username, avatar_url)
+      sender:users!direct_messages_user_id_fkey(id, username, avatar_url),
+      receiver:users!direct_messages_receiver_id_fkey(id, username, avatar_url)
     `)
-    .or(`and(user_id.eq.${userId},receiver_id.eq.${otherUserId}),and(user_id.eq.${otherUserId},receiver_id.eq.${userId})`)
-    .eq('is_direct_message', true)
-    .order('created_at', { ascending: true })
+    .or(`and(user_id.eq.${userId},receiver_id.eq.${receiverId}),and(user_id.eq.${receiverId},receiver_id.eq.${userId})`)
+    .order('created_at', { ascending: true });
 
   if (error) {
-    console.error('Error fetching direct messages:', error)
-    return []
+    console.error('Error fetching direct messages:', error);
+    throw error;
   }
 
-  return data
-}
-
-export async function sendDirectMessage(senderId: string, receiverId: string, content: string) {
-  const { data, error } = await supabase
-    .from('messages')
-    .insert({
-      user_id: senderId,
-      receiver_id: receiverId,
-      content,
-      is_direct_message: true
-    })
-    .select(`
-      id,
-      content,
-      created_at,
-      user_id,
-      receiver_id,
-      sender:users!messages_user_id_fkey(id, username, avatar_url),
-      receiver:users!messages_receiver_id_fkey(id, username, avatar_url)
-    `)
-    .single()
-
-  if (error) {
-    console.error('Error sending direct message:', error)
-    throw error
-  }
-
-  return data
-}
-
-export async function getUserProfile(userId: string) {
-  const { data, error } = await supabase
-    .from('users')
-    .select('id, username, email, avatar_url, phone, bio, employer, status')
-    .eq('id', userId)
-    .single()
-
-  if (error) {
-    console.error('Error fetching user profile:', error)
-    return null
-  }
-
-  return data
-}
-
-export async function getUserCount() {
-  if (!supabase) {
-    console.error('Supabase client is not initialized')
-    return 0
-  }
-  try {
-    const { count, error } = await supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true })
-
-    if (error) {
-      console.error('Supabase error:', error)
-      throw error
-    }
-
-    return count || 0
-  } catch (error) {
-    console.error('Error fetching user count:', error)
-    if (error instanceof Error) {
-      console.error('Error name:', error.name)
-      console.error('Error message:', error.message)
-      console.error('Error stack:', error.stack)
-    }
-    return 0
-  }
+  const messages = data as unknown as SupabaseResponse[];
+  return (messages || []).map(msg => ({
+    id: msg.id,
+    content: msg.content,
+    created_at: msg.created_at,
+    user_id: msg.user_id,
+    receiver_id: msg.receiver_id,
+    sender: msg.sender[0] as SupabaseUser,
+    receiver: msg.receiver[0] as SupabaseUser
+  }));
 }
 
 export async function createChannel(name: string, workspaceId: string, creatorId: string) {
@@ -355,15 +319,15 @@ export async function createChannel(name: string, workspaceId: string, creatorId
     .from('channels')
     .insert({ name, workspace_id: workspaceId, created_by: creatorId })
     .select()
-    .single()
+    .single();
 
   if (channelError) {
-    console.error('Error creating channel:', channelError)
-    return { error: channelError }
+    console.error('Error creating channel:', channelError);
+    return { error: channelError };
   }
 
   // Create the first message in the channel
-  const firstMessageContent = `Welcome to the #${name} channel!`
+  const firstMessageContent = `Welcome to the #${name} channel!`;
   const { data: message, error: messageError } = await supabase
     .from('messages')
     .insert({
@@ -373,46 +337,59 @@ export async function createChannel(name: string, workspaceId: string, creatorId
       is_direct_message: false
     })
     .select()
-    .single()
+    .single();
 
   if (messageError) {
-    console.error('Error creating first message:', messageError)
-    return { error: messageError }
+    console.error('Error creating first message:', messageError);
+    return { error: messageError };
   }
 
-  return { data: { channel, firstMessage: message } }
+  return { data: { channel, firstMessage: message } };
 }
 
-export async function createUserProfile(email: string) {
-  try {
-    const username = email.split('@')[0]; // Extract username from email
-    const { data, error } = await supabase
-      .from('users')
-      .insert({ email, username })
-      .select()
-      .single()
+export async function getUserProfile(userId: string) {
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, username, email, avatar_url, phone, bio, employer, status')
+    .eq('id', userId)
+    .single();
 
-    if (error) {
-      console.error('Error creating user profile:', error)
-      throw error
-    }
-
-    return data
-  } catch (error) {
-    console.error('Error in createUserProfile:', error)
-    throw error
+  if (error) {
+    console.error('Error fetching user profile:', error);
+    throw error;
   }
+
+  return data;
 }
 
-export async function testSupabaseConnection() {
-  try {
-    const { data, error } = await supabase.from('users').select('count', { count: 'exact', head: true })
-    if (error) throw error
-    console.log('Supabase connection successful')
-    return true
-  } catch (error) {
-    console.error('Supabase connection failed:', error)
-    return false
+export async function sendDirectMessage(senderId: string, receiverId: string, content: string): Promise<DirectMessage> {
+  const { data, error } = await supabase
+    .from('direct_messages')
+    .insert({
+      user_id: senderId,
+      receiver_id: receiverId,
+      content
+    })
+    .select(`
+      id,
+      content,
+      created_at,
+      user_id,
+      receiver_id,
+      sender:users!direct_messages_user_id_fkey(id, username, avatar_url),
+      receiver:users!direct_messages_receiver_id_fkey(id, username, avatar_url)
+    `)
+    .single();
+
+  if (error) {
+    console.error('Error sending direct message:', error);
+    throw error;
   }
-}
 
+  const typedData = data as unknown as SupabaseResponse;
+  return {
+    ...typedData,
+    sender: typedData.sender[0],
+    receiver: typedData.receiver[0]
+  };
+}

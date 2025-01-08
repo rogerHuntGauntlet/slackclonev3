@@ -1,0 +1,1 @@
+git add . && git commit -m "fix: resolve typescript errors in DirectMessageArea and supabase interfaces" && git push 

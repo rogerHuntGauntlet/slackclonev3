@@ -2,7 +2,7 @@
 
 import { FC, useState, useEffect, useRef } from 'react'
 import { Send, Paperclip, Smile } from 'lucide-react'
-import { getDirectMessages, sendDirectMessage, getUserProfile } from '../lib/supabase'
+import { getDirectMessages, sendDirectMessage, getUserProfile, DirectMessage, SupabaseUser, SupabaseResponse } from '../lib/supabase'
 import EmojiPicker from 'emoji-picker-react'
 import ChatHeader from './ChatHeader'
 import ProfileCard from './ProfileCard'
@@ -16,22 +16,10 @@ interface SearchResult {
   channelName: string;
 }
 
-interface DirectMessage {
+interface User {
   id: string;
-  content: string;
-  created_at: string;
-  user_id: string;
-  receiver_id: string;
-  sender: {
-    id: string;
-    username: string;
-    avatar_url: string;
-  };
-  receiver: {
-    id: string;
-    username: string;
-    avatar_url: string;
-  };
+  username: string;
+  avatar_url: string;
 }
 
 interface UserProfile {
@@ -50,33 +38,56 @@ interface DirectMessageAreaProps {
   otherUserId: string;
 }
 
-const DirectMessageArea: FC<DirectMessageAreaProps> = ({ currentUser, otherUserId }) => {
+export default function DirectMessageArea({ otherUserId }: { otherUserId: string }) {
   const [messages, setMessages] = useState<DirectMessage[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [otherUser, setOtherUser] = useState<UserProfile | null>(null)
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [currentUser, setCurrentUser] = useState<SupabaseUser | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
     fetchMessages()
     fetchOtherUserProfile()
-  }, [currentUser.id, otherUserId])
+  }, [currentUser?.id, otherUserId])
 
   useEffect(() => {
     scrollToBottom()
   }, [messages])
 
   const fetchMessages = async () => {
+    if (!currentUser) return;
+    
     try {
-      const fetchedMessages = await getDirectMessages(currentUser.id, otherUserId)
-      setMessages(fetchedMessages)
-      setError(null)
+      const fetchedMessages = await getDirectMessages(currentUser.id, otherUserId);
+      // Transform the data to match the DirectMessage interface
+      const formattedMessages: DirectMessage[] = fetchedMessages.map((msg: any) => ({
+        id: msg.id,
+        content: msg.content,
+        created_at: msg.created_at,
+        user_id: msg.user_id,
+        receiver_id: msg.receiver_id,
+        sender: {
+          id: msg.sender[0]?.id || '',
+          username: msg.sender[0]?.username || '',
+          avatar_url: msg.sender[0]?.avatar_url || ''
+        },
+        receiver: {
+          id: msg.receiver[0]?.id || '',
+          username: msg.receiver[0]?.username || '',
+          avatar_url: msg.receiver[0]?.avatar_url || ''
+        }
+      }));
+      
+      setMessages(formattedMessages);
+      setError(null);
     } catch (error) {
-      console.error('Error fetching messages:', error)
-      setError('Failed to load messages. Please try again.')
+      console.error('Error fetching messages:', error);
+      setError('Failed to load messages');
     }
-  }
+  };
 
   const fetchOtherUserProfile = async () => {
     try {
@@ -98,8 +109,13 @@ const DirectMessageArea: FC<DirectMessageAreaProps> = ({ currentUser, otherUserI
     setError(null)
     if (newMessage.trim()) {
       try {
-        const sentMessage = await sendDirectMessage(currentUser.id, otherUserId, newMessage.trim())
-        setMessages([...messages, sentMessage])
+        const sentMessage = await sendDirectMessage(currentUser?.id || '', otherUserId, newMessage.trim())
+        const formattedMessage: DirectMessage = {
+          ...sentMessage,
+          sender: (sentMessage as unknown as SupabaseResponse).sender[0],
+          receiver: (sentMessage as unknown as SupabaseResponse).receiver[0]
+        };
+        setMessages([...messages, formattedMessage])
         setNewMessage('')
       } catch (error) {
         console.error('Error sending message:', error)
@@ -126,6 +142,8 @@ const DirectMessageArea: FC<DirectMessageAreaProps> = ({ currentUser, otherUserI
         isDM={true}
         onSearchResult={handleSearchResult}
         userWorkspaces={[]}
+        isCollapsed={isCollapsed}
+        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
       />
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
@@ -139,10 +157,10 @@ const DirectMessageArea: FC<DirectMessageAreaProps> = ({ currentUser, otherUserI
           <div
             key={message.id}
             id={`message-${message.id}`}
-            className={`flex ${message.sender.id === currentUser.id ? 'justify-end' : 'justify-start'}`}
+            className={`flex ${message.sender.id === currentUser?.id ? 'justify-end' : 'justify-start'}`}
           >
             <div className={`max-w-xs lg:max-w-md xl:max-w-lg ${
-              message.sender.id === currentUser.id ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-700'
+              message.sender.id === currentUser?.id ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-700'
             } rounded-lg p-3 text-white`}>
               <p className="text-sm">{message.content}</p>
               <p className="text-xs text-gray-200 mt-1">{new Date(message.created_at).toLocaleString()}</p>
@@ -195,6 +213,4 @@ const DirectMessageArea: FC<DirectMessageAreaProps> = ({ currentUser, otherUserI
     </div>
   )
 }
-
-export default DirectMessageArea
 
