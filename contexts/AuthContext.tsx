@@ -1,9 +1,9 @@
 import { createContext, useContext, ReactNode, useState } from 'react'
 
 interface Profile {
-  name: string;
-  email: string;
-  status: 'online' | 'away' | 'offline';
+  name?: string;
+  email?: string;
+  status?: 'online' | 'away' | 'offline';
 }
 
 interface AuthContextType {

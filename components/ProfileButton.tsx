@@ -22,9 +22,9 @@ export default function ProfileButton() {
   useEffect(() => {
     if (user) {
       setProfile({
-        name: user.name,
+        name: user.name || '',
         email: user.email,
-        status: user.status
+        status: user.status || 'online'
       })
     }
   }, [user])
