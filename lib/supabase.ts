@@ -393,3 +393,63 @@ export async function sendDirectMessage(senderId: string, receiverId: string, co
     receiver: typedData.receiver[0]
   };
 }
+
+export async function testSupabaseConnection() {
+  try {
+    const { data, error } = await supabase.from('users').select('count', { count: 'exact', head: true })
+    if (error) throw error
+    console.log('Supabase connection successful')
+    return true
+  } catch (error) {
+    console.error('Supabase connection failed:', error)
+    return false
+  }
+}
+
+export async function getUserCount() {
+  if (!supabase) {
+    console.error('Supabase client is not initialized')
+    return 0
+  }
+  try {
+    const { count, error } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+
+    if (error) {
+      console.error('Supabase error:', error)
+      throw error
+    }
+
+    return count || 0
+  } catch (error) {
+    console.error('Error fetching user count:', error)
+    if (error instanceof Error) {
+      console.error('Error name:', error.name)
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+    }
+    return 0
+  }
+}
+
+export async function createUserProfile(email: string) {
+  try {
+    const username = email.split('@')[0]; // Extract username from email
+    const { data, error } = await supabase
+      .from('users')
+      .insert({ email, username })
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating user profile:', error)
+      throw error
+    }
+
+    return data
+  } catch (error) {
+    console.error('Error in createUserProfile:', error)
+    throw error
+  }
+}
