@@ -1,35 +1,26 @@
 import { NextResponse } from 'next/server';
 import { Client } from '@elastic/elasticsearch';
 
-const createClient = () => {
-  const cloudId = process.env.ELASTIC_CLOUD_ID;
-  const apiKey = process.env.ELASTIC_API_KEY;
-
-  if (!cloudId || !apiKey) {
-    console.error('Missing Elasticsearch configuration');
-    return null;
-  }
-
-  return new Client({
-    cloud: { id: cloudId },
-    auth: { apiKey },
-  });
-};
+// Move the client creation outside the handler
+const client = new Client({
+  cloud: {
+    id: process.env.ELASTIC_CLOUD_ID || '',
+  },
+  auth: {
+    apiKey: process.env.ELASTIC_API_KEY || '',
+  },
+  node: process.env.ELASTICSEARCH_NODE || 'http://localhost:9200' // Add a fallback node
+});
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const query = searchParams.get('q');
-
-  if (!query) {
-    return NextResponse.json({ error: 'Search query is required' }, { status: 400 });
-  }
-
-  const client = createClient();
-  if (!client) {
-    return NextResponse.json({ error: 'Elasticsearch client not initialized' }, { status: 500 });
-  }
-
   try {
+    const { searchParams } = new URL(request.url);
+    const query = searchParams.get('q');
+
+    if (!query) {
+      return NextResponse.json({ error: 'Search query is required' }, { status: 400 });
+    }
+
     const result = await client.search({
       index: 'messages',
       body: {
