@@ -38,14 +38,13 @@ interface DirectMessageAreaProps {
   otherUserId: string;
 }
 
-export default function DirectMessageArea({ otherUserId }: { otherUserId: string }) {
+export default function DirectMessageArea({ currentUser, otherUserId }: DirectMessageAreaProps) {
   const [messages, setMessages] = useState<DirectMessage[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [otherUser, setOtherUser] = useState<UserProfile | null>(null)
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [currentUser, setCurrentUser] = useState<SupabaseUser | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
@@ -109,7 +108,7 @@ export default function DirectMessageArea({ otherUserId }: { otherUserId: string
     setError(null)
     if (newMessage.trim()) {
       try {
-        const sentMessage = await sendDirectMessage(currentUser?.id || '', otherUserId, newMessage.trim())
+        const sentMessage = await sendDirectMessage(currentUser.id, otherUserId, newMessage.trim())
         const formattedMessage: DirectMessage = {
           ...sentMessage,
           sender: (sentMessage as unknown as SupabaseResponse).sender[0],
@@ -157,10 +156,10 @@ export default function DirectMessageArea({ otherUserId }: { otherUserId: string
           <div
             key={message.id}
             id={`message-${message.id}`}
-            className={`flex ${message.sender.id === currentUser?.id ? 'justify-end' : 'justify-start'}`}
+            className={`flex ${message.sender.id === currentUser.id ? 'justify-end' : 'justify-start'}`}
           >
             <div className={`max-w-xs lg:max-w-md xl:max-w-lg ${
-              message.sender.id === currentUser?.id ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-700'
+              message.sender.id === currentUser.id ? 'bg-blue-500' : 'bg-gray-300 dark:bg-gray-700'
             } rounded-lg p-3 text-white`}>
               <p className="text-sm">{message.content}</p>
               <p className="text-xs text-gray-200 mt-1">{new Date(message.created_at).toLocaleString()}</p>
