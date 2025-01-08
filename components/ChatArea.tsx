@@ -10,7 +10,6 @@ import { getMessages, sendMessage, sendReply } from '../lib/supabase'
 import ChatHeader from './ChatHeader'
 import { useDropzone } from 'react-dropzone'
 import debounce from 'lodash/debounce'
-import TwitterFeed from './TwitterFeed'
 
 interface ChatAreaProps {
   activeWorkspace: string;
@@ -548,8 +547,6 @@ const ChatArea: FC<ChatAreaProps> = ({ activeWorkspace, activeChannel, currentUs
 
         <ScrollToTopButton />
       </div>
-
-      <TwitterFeed />
     </div>
   )
 }
